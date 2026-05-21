@@ -238,6 +238,7 @@ model Agency {
   contactPhone   String
   walletBalance  Float     @default(0)
   creditLimit    Float     @default(0)
+  marginPercent  Float     @default(2)
   isActive       Boolean   @default(true)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -271,6 +272,8 @@ model ServiceListing {
   /// [{name, mandatory, description}]
   requiredDocuments   Json[]
   basePrice           Float
+  refundablePercent   Float     
+
   /// ISO 4217
   currency            String         @default("USD")
   slaDays             Int
@@ -326,8 +329,6 @@ model DraftPackage {
   agencyId         String             @db.ObjectId
   version          Int                @default(1)
   title            String
-  /// [{listingId, qty, vendorPrice, agencyMargin, totalPrice}]
-  items            Json[]
   subtotal         Float
   marginTotal      Float
   grandTotal       Float
@@ -346,6 +347,24 @@ model DraftPackage {
   bookings         Booking[]
 
   @@map("draft_packages")
+}
+
+model PackageItems {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  draftPackageId String @db.ObjectId
+  listingId String @db.ObjectId
+  qty Int
+  vendorPrice Float
+  agencyMargin Float //calculated value from agency margin percent
+  totalPrice Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  draftPackage DraftPackage @relation(fields: [draftPackageId], references: [id])
+  listing ServiceListing @relation(fields: [listingId], references: [id])
+
+  @@map("package_items")
 }
 
 // ─────────────────────────────────────────────
@@ -515,6 +534,8 @@ model Invoice {
   subtotal      Float
   taxAmount     Float         @default(0)
   totalAmount   Float
+  dueAmount     Float         @default(0)
+  paidAmount    Float         @default(0)
   status        InvoiceStatus @default(DRAFT)
   s3Key         String?
   issuedAt      DateTime?
@@ -529,7 +550,28 @@ model Invoice {
 }
 
 // ─────────────────────────────────────────────
-// 3.13 Notification Model
+// 3.13 Payment Model
+// ─────────────────────────────────────────────
+model Payment {
+  id String  @id @default(auto()) @map("_id") @db.ObjectId
+  invoiceId String @db.ObjectId
+  agencyId String @db.ObjectId
+  paymentMethod PaymentMethod
+  transactionId String @unique
+  amount Float
+  status PaymentStatus
+  paidAt DateTime
+  createdAt DateTime @default(now())
+
+  // Relations
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+  
+  @@map("payments")
+}
+
+
+// ─────────────────────────────────────────────
+// 3.14 Notification Model
 // ─────────────────────────────────────────────
 model Notification {
   id             String                     @id @default(auto()) @map("_id") @db.ObjectId
@@ -551,7 +593,7 @@ model Notification {
 }
 
 // ─────────────────────────────────────────────
-// 3.14 AuditLog Model
+// 3.15 AuditLog Model
 // Append-only. Written by Prisma middleware on all sensitive mutations.
 // ─────────────────────────────────────────────
 model AuditLog {

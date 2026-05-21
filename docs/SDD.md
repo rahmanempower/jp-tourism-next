@@ -179,6 +179,7 @@ slug	String	Unique	URL-friendly identifier
 licenseNumber	String	Optional, Unique	Government travel license number
 contactEmail	String	Required	Primary contact email
 contactPhone	String	Required	Primary phone / WhatsApp
+marginPercent	Float	Required	Default: 2% -  The percentage of margin that the agency will get from the total price
 walletBalance	Float	Default: 0	Current wallet balance in base currency
 creditLimit	Float	Default: 0	Pre-approved credit limit (Admin-set)
 isActive	Boolean	Default: true	Agency active status
@@ -196,6 +197,7 @@ destinationCountry	String	Required	ISO-3166-1 alpha-2 country code
 inclusions	String[]	Required	Array of included items
 requiredDocuments	Json[]	Required	[{name, mandatory, description}]
 basePrice	Float	Required	Vendor's fixed price (platform currency)
+refundablePercent	Float	Required	Default: 0 - The percentage of refundable amount from the total price upon cancellation by customer/vendor
 currency	String	Default: USD	ISO 4217 currency code
 slaDays	Int	Required	Standard processing time in business days
 status	Enum	Required	DRAFT | PENDING_APPROVAL | APPROVED | REJECTED | ARCHIVED
@@ -233,6 +235,18 @@ quotationPdfKey	String?	S3 Key	Generated PDF quotation path in S3
 whatsappSent	Boolean	Default: false	Whether quotation was shared via WhatsApp
 expiresAt	DateTime?	Optional	Quotation expiry datetime
 status	Enum	Required	DRAFT | SENT | EXPIRED | CONVERTED
+createdAt	DateTime	Auto	Creation timestamp
+updatedAt	DateTime	Auto	Last update timestamp
+
+3.6.1 PackageItems Model
+Field	Type	Constraints	Description
+id	String	PK, ObjectId	MongoDB document ID
+draftPackageId	String	FK, Required	Parent draft package
+listingId	String	FK, Required	Service listing
+qty	Int	Required	Quantity
+vendorPrice	Float	Required	Vendor price per unit
+agencyMargin	Float	Required	Agency margin per unit
+totalPrice	Float	Required	Total price per unit
 createdAt	DateTime	Auto	Creation timestamp
 updatedAt	DateTime	Auto	Last update timestamp
 
@@ -330,13 +344,27 @@ lineItems	Json[]	Required	[{description, qty, unitPrice, total}]
 subtotal	Float	Required	Pre-tax subtotal
 taxAmount	Float	Default: 0	Applicable tax (extensible)
 totalAmount	Float	Required	Total invoice amount
+dueAmount	Float	Default: 0	Remaining amount due
+paidAmount	Float	Default: 0	Total paid amount
 status	Enum	Required	DRAFT | ISSUED | PAID | VOID
 s3Key	String?	S3 Key	Generated PDF invoice S3 key
 issuedAt	DateTime?	Optional	Invoice issue date
 dueAt	DateTime?	Optional	Payment due date
 createdAt	DateTime	Auto	Creation timestamp
 
-3.13 Notification Model
+3.13 Payments Model
+Field	Type	Constraints	Description
+id	String	PK, ObjectId	MongoDB document ID
+invoiceId 	String 	FK, Required	Invoice ID
+agencyId 	String 	FK, Required	Agency ID
+paymentMethod 	Enum 	Required	Payment method
+transactionId 	String 	Unique	Transaction ID
+amount 	Float 	Required	Payment amount
+status 	Enum 	Required	Payment status
+paidAt DateTime Auto Creation timestamp
+createdAt DateTime Auto Creation timestamp
+
+3.14 Notification Model
 Field	Type	Constraints	Description
 id	String	PK, ObjectId	MongoDB document ID
 userId	String	FK, Required	Target user
@@ -349,7 +377,7 @@ isRead	Boolean	Default: false	Read status for in-app notifications
 deliveryStatus	Enum	Required	PENDING | SENT | DELIVERED | FAILED
 createdAt	DateTime	Auto	Creation timestamp
 
-3.14 AuditLog Model
+3.15 AuditLog Model
 Field	Type	Constraints	Description
 id	String	PK, ObjectId	MongoDB document ID
 userId	String	FK, Required	User who performed the action
