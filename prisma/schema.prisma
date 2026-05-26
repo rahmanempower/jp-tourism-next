@@ -1,19 +1,18 @@
 // ============================================================
 // Prisma Schema — Travel & Visa Services Platform
 // Provider   : MongoDB (Atlas)
-// Generator  : prisma-client (Prisma 6+)
+// Generator  : prisma-client-js (Prisma 6.x)
 // Ref        : docs/SDD.md  v1.0
 // ============================================================
 
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../app/generated/prisma"
 }
 
 datasource db {
   provider = "mongodb"
-  // NOTE: Connection URL is configured in prisma.config.ts (Prisma 7+)
-  // Set DATABASE_URL in your .env file
+  url      = env("DATABASE_URL")
 }
 
 // ─────────────────────────────────────────────
@@ -155,6 +154,21 @@ enum NotificationDeliveryStatus {
   FAILED
 }
 
+enum PaymentMethod {
+  WALLET
+  BANK_TRANSFER
+  CREDIT_CARD
+  CASH
+  GATEWAY
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
 // ─────────────────────────────────────────────
 // 3.1 User Model
 // Central authentication & identity — shared across all roles.
@@ -291,6 +305,7 @@ model ServiceListing {
 
   // Back-relations
   bookings            Booking[]
+  packageItems        PackageItems[]
 
   @@map("service_listings")
 }
@@ -345,6 +360,7 @@ model DraftPackage {
 
   // Back-relations
   bookings         Booking[]
+  items            PackageItems[]
 
   @@map("draft_packages")
 }
@@ -546,6 +562,9 @@ model Invoice {
   agency        Agency        @relation(fields: [agencyId], references: [id])
   booking       Booking?      @relation(fields: [bookingId], references: [id])
 
+  // Back-relations
+  payments      Payment[]
+
   @@map("invoices")
 }
 
@@ -590,6 +609,20 @@ model Notification {
   user           User                       @relation(fields: [userId], references: [id])
 
   @@map("notifications")
+}
+
+// ─────────────────────────────────────────────
+// PasswordResetToken — short-lived tokens for password reset flow.
+// ─────────────────────────────────────────────
+model PasswordResetToken {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("password_reset_tokens")
 }
 
 // ─────────────────────────────────────────────
