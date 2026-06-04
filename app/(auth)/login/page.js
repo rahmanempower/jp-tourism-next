@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { InputText } from "primereact/inputtext";
 import { Password } from "primereact/password";
@@ -7,7 +7,7 @@ import { Button } from "primereact/button";
 import { Message } from "primereact/message";
 import { Checkbox } from "primereact/checkbox";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const from = params.get("from");
@@ -171,5 +171,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }
