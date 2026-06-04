@@ -2,41 +2,62 @@
 // Server Component: fetches KPIs server-side, renders static PrimeReact cards.
 import { getSession } from "@/lib/auth.js";
 import prisma from "@/lib/prisma.js";
+import { isDatabaseReachable, withPrismaFallback } from "@/lib/prismaResilience.js";
 
 export const metadata = { title: "Dashboard · Admin · JP Tourism" };
 
 async function getKpis() {
-  const [
-    totalBookings,
-    activeVendors,
-    activeAgencies,
-    pendingKyc,
-    pendingListings,
-    totalEscrowHeld,
-  ] = await Promise.all([
-    prisma.booking.count(),
-    prisma.vendor.count({ where: { isActive: true } }),
-    prisma.agency.count({ where: { isActive: true } }),
-    prisma.vendor.count({ where: { kycStatus: "UNDER_REVIEW" } }),
-    prisma.serviceListing.count({ where: { status: "PENDING_APPROVAL" } }),
-    prisma.escrowLedger.aggregate({ where: { status: "HELD" }, _sum: { amount: true } }),
-  ]);
-
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const bookingsMtd = await prisma.booking.count({
-    where: { createdAt: { gte: startOfMonth } },
-  });
 
-  return {
-    totalBookings,
-    bookingsMtd,
-    activeVendors,
-    activeAgencies,
-    pendingKyc,
-    pendingListings,
-    escrowHeld: totalEscrowHeld._sum.amount ?? 0,
+  const fallback = {
+    totalBookings: 0,
+    bookingsMtd: 0,
+    activeVendors: 0,
+    activeAgencies: 0,
+    pendingKyc: 0,
+    pendingListings: 0,
+    escrowHeld: 0,
   };
+
+  const reachable = await isDatabaseReachable(prisma, "admin-dashboard");
+  if (!reachable) return fallback;
+
+  return withPrismaFallback(
+    async () => {
+      const [
+        totalBookings,
+        activeVendors,
+        activeAgencies,
+        pendingKyc,
+        pendingListings,
+        totalEscrowHeld,
+      ] = await Promise.all([
+        prisma.booking.count(),
+        prisma.vendor.count({ where: { isActive: true } }),
+        prisma.agency.count({ where: { isActive: true } }),
+        prisma.vendor.count({ where: { kycStatus: "UNDER_REVIEW" } }),
+        prisma.serviceListing.count({ where: { status: "PENDING_APPROVAL" } }),
+        prisma.escrowLedger.aggregate({ where: { status: "HELD" }, _sum: { amount: true } }),
+      ]);
+
+      const bookingsMtd = await prisma.booking.count({
+        where: { createdAt: { gte: startOfMonth } },
+      });
+
+      return {
+        totalBookings,
+        bookingsMtd,
+        activeVendors,
+        activeAgencies,
+        pendingKyc,
+        pendingListings,
+        escrowHeld: totalEscrowHeld._sum.amount ?? 0,
+      };
+    },
+    fallback,
+    "admin-dashboard"
+  );
 }
 
 export default async function AdminDashboardPage() {

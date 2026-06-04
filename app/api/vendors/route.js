@@ -1,7 +1,8 @@
 // app/api/vendors/route.js
-// POST /api/vendors  — Admin creates a vendor profile
+// POST /api/vendors  — Admin creates a vendor profile (optionally with owner user)
 // GET  /api/vendors  — Admin lists vendors with optional kycStatus filter
 
+import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma.js";
 import { requireAuth, ok, fail } from "@/lib/apiAuth.js";
 
@@ -56,17 +57,39 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { businessName, contactEmail, contactPhone, category, address } = body;
+    const {
+      businessName,
+      contactEmail,
+      contactPhone,
+      category,
+      address,
+      owner, // optional: { email, password, firstName, lastName, phone? }
+    } = body;
 
     if (!businessName || !contactEmail || !contactPhone) {
       return fail("businessName, contactEmail, and contactPhone are required.");
     }
 
-    const slug =
-      businessName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "") + `-${Date.now()}`;
+    if (owner) {
+      const { email, password, firstName, lastName } = owner;
+      if (!email || !password || !firstName || !lastName) {
+        return fail("owner.email, owner.password, owner.firstName, and owner.lastName are required when creating an owner user.");
+      }
+      if (password.length < 8) {
+        return fail("Password must be at least 8 characters.");
+      }
+      const existing = await prisma.user.findUnique({ where: { email } });
+      if (existing) {
+        return fail("A user with that email already exists.", 409);
+      }
+    }
+
+    const baseSlug = businessName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+    const slugExists = await prisma.vendor.findUnique({ where: { slug: baseSlug } });
+    const slug = slugExists ? `${baseSlug}-${Date.now()}` : baseSlug;
 
     const vendor = await prisma.vendor.create({
       data: {
@@ -74,7 +97,7 @@ export async function POST(request) {
         slug,
         contactEmail,
         contactPhone,
-        category: category ?? [],
+        category: Array.isArray(category) ? category : [],
         kycDocuments: [],
         kycStatus: "PENDING",
         isActive: false,
@@ -82,7 +105,26 @@ export async function POST(request) {
       },
     });
 
-    return ok(vendor, undefined, 201);
+    let user = null;
+    if (owner) {
+      const passwordHash = await bcrypt.hash(owner.password, 12);
+      user = await prisma.user.create({
+        data: {
+          email: owner.email,
+          passwordHash,
+          role: "VENDOR",
+          firstName: owner.firstName,
+          lastName: owner.lastName,
+          phone: owner.phone ?? null,
+          isActive: true,
+          isEmailVerified: false,
+          vendorId: vendor.id,
+        },
+        select: { id: true, email: true, firstName: true, lastName: true, role: true },
+      });
+    }
+
+    return ok({ vendor, user }, undefined, 201);
   } catch (err) {
     console.error("[POST /api/vendors]", err);
     return fail("Failed to create vendor.", 500);

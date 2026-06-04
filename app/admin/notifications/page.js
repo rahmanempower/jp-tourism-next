@@ -1,6 +1,7 @@
 // app/admin/notifications/page.js — Admin: My Notifications
 import { getSession } from "@/lib/auth.js";
 import prisma from "@/lib/prisma.js";
+import { isDatabaseReachable, withPrismaFallback } from "@/lib/prismaResilience.js";
 
 export const metadata = { title: "Notifications · Admin · JP Tourism" };
 
@@ -27,15 +28,29 @@ export default async function AdminNotificationsPage() {
   const session = await getSession();
   if (!session) return null;
 
-  const [notifications, total, unreadCount] = await Promise.all([
-    prisma.notification.findMany({
-      where: { userId: session.id },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
-    prisma.notification.count({ where: { userId: session.id } }),
-    prisma.notification.count({ where: { userId: session.id, isRead: false } }),
-  ]);
+  const fallback = { notifications: [], total: 0, unreadCount: 0 };
+
+  const reachable = await isDatabaseReachable(prisma, "admin-notifications-page");
+
+  const { notifications, total, unreadCount } = !reachable
+    ? fallback
+    : await withPrismaFallback(
+        async () => {
+          const [notifications, total, unreadCount] = await Promise.all([
+            prisma.notification.findMany({
+              where: { userId: session.id },
+              orderBy: { createdAt: "desc" },
+              take: 100,
+            }),
+            prisma.notification.count({ where: { userId: session.id } }),
+            prisma.notification.count({ where: { userId: session.id, isRead: false } }),
+          ]);
+
+          return { notifications, total, unreadCount };
+        },
+        fallback,
+        "admin-notifications-page"
+      );
 
   return (
     <div>

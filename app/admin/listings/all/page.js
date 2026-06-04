@@ -1,6 +1,7 @@
 // app/admin/listings/all/page.js — Admin: All Listings
 import { getSession } from "@/lib/auth.js";
 import prisma from "@/lib/prisma.js";
+import { isDatabaseReachable, withPrismaFallback } from "@/lib/prismaResilience.js";
 
 export const metadata = { title: "All Listings · Admin · JP Tourism" };
 
@@ -36,14 +37,28 @@ export default async function AdminAllListingsPage() {
   const session = await getSession();
   if (!session) return null;
 
-  const [listings, statusCounts] = await Promise.all([
-    prisma.serviceListing.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 200,
-      include: { vendor: { select: { businessName: true } } },
-    }),
-    prisma.serviceListing.groupBy({ by: ["status"], _count: { _all: true } }),
-  ]);
+  const fallback = { listings: [], statusCounts: [] };
+
+  const reachable = await isDatabaseReachable(prisma, "admin-all-listings-page");
+
+  const { listings, statusCounts } = !reachable
+    ? fallback
+    : await withPrismaFallback(
+        async () => {
+          const [listings, statusCounts] = await Promise.all([
+            prisma.serviceListing.findMany({
+              orderBy: { createdAt: "desc" },
+              take: 200,
+              include: { vendor: { select: { businessName: true } } },
+            }),
+            prisma.serviceListing.groupBy({ by: ["status"], _count: { _all: true } }),
+          ]);
+
+          return { listings, statusCounts };
+        },
+        fallback,
+        "admin-all-listings-page"
+      );
 
   const statusMap = Object.fromEntries(statusCounts.map((g) => [g.status, g._count._all]));
 
@@ -66,7 +81,7 @@ export default async function AdminAllListingsPage() {
       <div style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: "14px", overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead style={{ background: "#1a1f2e" }}>
+            <thead style={{ background: "var(--table-header-bg)" }}>
               <tr>
                 <TH>Title</TH>
                 <TH>Vendor</TH>

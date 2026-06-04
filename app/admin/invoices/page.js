@@ -1,6 +1,7 @@
 // app/admin/invoices/page.js — Admin: Invoices
 import { getSession } from "@/lib/auth.js";
 import prisma from "@/lib/prisma.js";
+import { isDatabaseReachable, withPrismaFallback } from "@/lib/prismaResilience.js";
 
 export const metadata = { title: "Invoices · Admin · JP Tourism" };
 
@@ -32,18 +33,36 @@ export default async function AdminInvoicesPage() {
   const session = await getSession();
   if (!session) return null;
 
-  const [invoices, statusGroups, totals] = await Promise.all([
-    prisma.invoice.findMany({
-      orderBy: { issuedAt: "desc" },
-      take: 200,
-      include: { agency: { select: { businessName: true } } },
-    }),
-    prisma.invoice.groupBy({ by: ["status"], _count: { _all: true }, _sum: { totalAmount: true } }),
-    prisma.invoice.aggregate({
-      _sum: { totalAmount: true, paidAmount: true },
-      _count: { _all: true },
-    }),
-  ]);
+  const fallback = {
+    invoices: [],
+    statusGroups: [],
+    totals: { _sum: { totalAmount: 0, paidAmount: 0 }, _count: { _all: 0 } },
+  };
+
+  const reachable = await isDatabaseReachable(prisma, "admin-invoices-page");
+
+  const { invoices, statusGroups, totals } = !reachable
+    ? fallback
+    : await withPrismaFallback(
+        async () => {
+          const [invoices, statusGroups, totals] = await Promise.all([
+            prisma.invoice.findMany({
+              orderBy: { issuedAt: "desc" },
+              take: 200,
+              include: { agency: { select: { businessName: true } } },
+            }),
+            prisma.invoice.groupBy({ by: ["status"], _count: { _all: true }, _sum: { totalAmount: true } }),
+            prisma.invoice.aggregate({
+              _sum: { totalAmount: true, paidAmount: true },
+              _count: { _all: true },
+            }),
+          ]);
+
+          return { invoices, statusGroups, totals };
+        },
+        fallback,
+        "admin-invoices-page"
+      );
 
   const statusMap = Object.fromEntries(statusGroups.map((g) => [g.status, { count: g._count._all, sum: g._sum.totalAmount ?? 0 }]));
   const totalInvoiced = totals._sum.totalAmount ?? 0;
@@ -87,7 +106,7 @@ export default async function AdminInvoicesPage() {
       <div style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: "14px", overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead style={{ background: "#1a1f2e" }}>
+            <thead style={{ background: "var(--table-header-bg)" }}>
               <tr>
                 <TH>Invoice #</TH>
                 <TH>Agency</TH>

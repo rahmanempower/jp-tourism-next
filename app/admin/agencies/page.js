@@ -1,6 +1,8 @@
 // app/admin/agencies/page.js — Admin: All Agencies
 import { getSession } from "@/lib/auth.js";
 import prisma from "@/lib/prisma.js";
+import { isDatabaseReachable, withPrismaFallback } from "@/lib/prismaResilience.js";
+import NewAgencyButton from "./NewAgencyButton";
 
 export const metadata = { title: "Agencies · Admin · JP Tourism" };
 
@@ -23,27 +25,48 @@ export default async function AdminAgenciesPage() {
   const session = await getSession();
   if (!session) return null;
 
-  const [agencies, totalCount, activeCount] = await Promise.all([
-    prisma.agency.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 200,
-      include: {
-        _count: { select: { users: true, bookings: true, customers: true } },
+  const fallback = {
+    agencies: [],
+    totalCount: 0,
+    activeCount: 0,
+  };
+
+  const reachable = await isDatabaseReachable(prisma, "admin-agencies-page");
+
+  const { agencies, totalCount, activeCount } = !reachable
+    ? fallback
+    : await withPrismaFallback(
+      async () => {
+        const [agencies, totalCount, activeCount] = await Promise.all([
+          prisma.agency.findMany({
+            orderBy: { createdAt: "desc" },
+            take: 200,
+            include: {
+              _count: { select: { users: true, bookings: true, customers: true } },
+            },
+          }),
+          prisma.agency.count(),
+          prisma.agency.count({ where: { isActive: true } }),
+        ]);
+
+        return { agencies, totalCount, activeCount };
       },
-    }),
-    prisma.agency.count(),
-    prisma.agency.count({ where: { isActive: true } }),
-  ]);
+      fallback,
+      "admin-agencies-page"
+    );
 
   return (
     <div>
-      <div style={{ marginBottom: "1.5rem" }}>
-        <h2 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.25rem" }}>All Agencies</h2>
-        <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
-          {totalCount} total ·{" "}
-          <span style={{ color: "#22c55e" }}>{activeCount} active</span> ·{" "}
-          <span style={{ color: "#ef4444" }}>{totalCount - activeCount} inactive</span>
-        </p>
+      <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+        <div>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.25rem" }}>All Agencies</h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
+            {totalCount} total ·{" "}
+            <span style={{ color: "#22c55e" }}>{activeCount} active</span> ·{" "}
+            <span style={{ color: "#ef4444" }}>{totalCount - activeCount} inactive</span>
+          </p>
+        </div>
+        <NewAgencyButton />
       </div>
 
       {/* Summary cards */}
@@ -63,7 +86,7 @@ export default async function AdminAgenciesPage() {
       <div style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: "14px", overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead style={{ background: "#1a1f2e" }}>
+            <thead style={{ background: "var(--table-header-bg)" }}>
               <tr>
                 <TH>Business Name</TH>
                 <TH>Contact</TH>

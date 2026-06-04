@@ -37,11 +37,11 @@ function StepBusinessInfo({ data, onChange }) {
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
       {[
         { key: "businessName", label: "Business Name *", placeholder: "Gulf Visa Services LLC" },
-        { key: "contactName",  label: "Contact Person *",  placeholder: "Full name" },
-        { key: "email",        label: "Email *",           placeholder: "ops@example.com" },
-        { key: "phone",        label: "Phone *",           placeholder: "+971 50 123 4567" },
+        { key: "contactName", label: "Contact Person *", placeholder: "Full name" },
+        { key: "email", label: "Email *", placeholder: "ops@example.com" },
+        { key: "phone", label: "Phone *", placeholder: "+971 50 123 4567" },
         { key: "registrationNumber", label: "Registration Number", placeholder: "CN-12345" },
-        { key: "vatNumber",    label: "VAT Number",        placeholder: "Optional" },
+        { key: "vatNumber", label: "VAT Number", placeholder: "Optional" },
       ].map(f => (
         <div key={f.key}>
           <label style={{ display: "block", fontSize: "0.78rem", color: "var(--text-muted)", marginBottom: "0.35rem" }}>{f.label}</label>
@@ -233,7 +233,7 @@ export default function VendorKycPage() {
         formData.append(`doc_${i}_file`, d.file);
       });
 
-      const res  = await fetch("/api/vendors/kyc/submit", { method: "POST", body: formData });
+      const res = await fetch("/api/vendors/kyc/submit", { method: "POST", body: formData });
       const json = await res.json();
 
       if (json.success) {
@@ -250,7 +250,7 @@ export default function VendorKycPage() {
   }
 
   return (
-    <div style={{ maxWidth: 820, margin: "0 auto" }}>
+    <div style={{ width: "100%" }}>
       <Toast ref={toast} position="top-right" />
 
       <div style={{ marginBottom: "1.75rem" }}>

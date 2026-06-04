@@ -62,7 +62,7 @@ export default async function CommissionsPage() {
           <h3 style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "1rem" }}>Monthly Breakdown</h3>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
             {Object.entries(monthly).map(([month, data]) => (
-              <div key={month} style={{ background: "#1a1f2e", border: "1px solid #2a3050", borderRadius: "10px", padding: "0.75rem 1.1rem", minWidth: 130 }}>
+              <div key={month} style={{ background: "var(--table-header-bg)", border: "1px solid #2a3050", borderRadius: "10px", padding: "0.75rem 1.1rem", minWidth: 130 }}>
                 <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.35rem" }}>{month}</div>
                 <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#a855f7" }}>{money(data.commission)}</div>
                 <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 2 }}>{data.count} bookings</div>
@@ -79,7 +79,7 @@ export default async function CommissionsPage() {
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
           <thead>
-            <tr style={{ background: "#1a1f2e" }}>
+            <tr style={{ background: "var(--table-header-bg)" }}>
               {["Booking Ref", "Agency", "Vendor", "Booking Total", "Escrow Amount", "Commission", "Released At"].map((h) => (
                 <th key={h} style={{ padding: "0.75rem 1rem", textAlign: "left", color: "var(--text-muted)", fontWeight: 600, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "1px solid var(--card-border)" }}>{h}</th>
               ))}

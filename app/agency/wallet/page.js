@@ -102,7 +102,7 @@ export default async function AgencyWalletPage() {
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead style={{ background: "#1a1f2e" }}>
+            <thead style={{ background: "var(--table-header-bg)" }}>
               <tr>
                 <TH>Date</TH>
                 <TH>Type</TH>

@@ -12,7 +12,7 @@ export default function AppShell({ user, pageTitle, children }) {
     <div className="app-shell">
       <AppSidebar role={user?.role} />
       <div className="app-main">
-        <AppHeader user={user} pageTitle={pageTitle} />
+        <AppHeader user={user} pageTitle={pageTitle} initialTheme={user?.initialTheme ?? "dark"} />
         <main className="app-content">{children}</main>
       </div>
     </div>

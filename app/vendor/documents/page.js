@@ -67,7 +67,7 @@ export default async function VendorDocumentsPage() {
       <div style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: "14px", overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
           <thead>
-            <tr style={{ background: "#1a1f2e" }}>
+            <tr style={{ background: "var(--table-header-bg)" }}>
               {["Document Name", "Type", "Customer", "Booking Ref", "File Size", "Mime Type", "Review Status", "Uploaded"].map((h) => (
                 <th key={h} style={{ padding: "0.75rem 1rem", textAlign: "left", color: "var(--text-muted)", fontWeight: 600, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "1px solid var(--card-border)" }}>{h}</th>
               ))}

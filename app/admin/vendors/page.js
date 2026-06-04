@@ -1,6 +1,8 @@
 // app/admin/vendors/page.js — Admin: All Vendors
 import { getSession } from "@/lib/auth.js";
 import prisma from "@/lib/prisma.js";
+import { isDatabaseReachable, withPrismaFallback } from "@/lib/prismaResilience.js";
+import NewVendorButton from "./NewVendorButton";
 
 export const metadata = { title: "Vendors · Admin · JP Tourism" };
 
@@ -35,24 +37,44 @@ export default async function AdminVendorsPage() {
   const session = await getSession();
   if (!session) return null;
 
-  const [vendors, kycCounts] = await Promise.all([
-    prisma.vendor.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 200,
-      include: {
-        _count: { select: { listings: true, bookings: true } },
+  const fallback = {
+    vendors: [],
+    kycCounts: [],
+  };
+
+  const reachable = await isDatabaseReachable(prisma, "admin-vendors-page");
+
+  const { vendors, kycCounts } = !reachable
+    ? fallback
+    : await withPrismaFallback(
+      async () => {
+        const [vendors, kycCounts] = await Promise.all([
+          prisma.vendor.findMany({
+            orderBy: { createdAt: "desc" },
+            take: 200,
+            include: {
+              _count: { select: { listings: true, bookings: true } },
+            },
+          }),
+          prisma.vendor.groupBy({ by: ["kycStatus"], _count: { _all: true } }),
+        ]);
+
+        return { vendors, kycCounts };
       },
-    }),
-    prisma.vendor.groupBy({ by: ["kycStatus"], _count: { _all: true } }),
-  ]);
+      fallback,
+      "admin-vendors-page"
+    );
 
   const kycMap = Object.fromEntries(kycCounts.map((g) => [g.kycStatus, g._count._all]));
 
   return (
     <div>
-      <div style={{ marginBottom: "1.5rem" }}>
-        <h2 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.25rem" }}>All Vendors</h2>
-        <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>{vendors.length} vendors registered</p>
+      <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+        <div>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.25rem" }}>All Vendors</h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>{vendors.length} vendors registered</p>
+        </div>
+        <NewVendorButton />
       </div>
 
       {/* KYC summary chips */}
@@ -67,7 +89,7 @@ export default async function AdminVendorsPage() {
       <div style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: "14px", overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead style={{ background: "#1a1f2e" }}>
+            <thead style={{ background: "var(--table-header-bg)" }}>
               <tr>
                 <TH>Business Name</TH>
                 <TH>Category</TH>

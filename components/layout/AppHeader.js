@@ -1,16 +1,30 @@
 "use client";
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { OverlayPanel } from "primereact/overlaypanel";
 import { ROLE_META } from "./menuConfig";
 
-export default function AppHeader({ user, pageTitle = "Dashboard" }) {
+export default function AppHeader({ user, pageTitle = "Dashboard", initialTheme = "dark" }) {
   const router = useRouter();
   const menuRef = useRef(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [theme, setTheme] = useState(initialTheme === "light" ? "light" : "dark");
 
   const meta = ROLE_META[user?.role] ?? ROLE_META.ADMIN;
   const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase();
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("jp-theme", theme);
+    document.cookie = `jp-theme=${theme}; path=/; max-age=31536000; samesite=lax`;
+  }, [theme]);
+
+  function toggleTheme() {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", nextTheme);
+    localStorage.setItem("jp-theme", nextTheme);
+    setTheme(nextTheme);
+  }
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -25,6 +39,11 @@ export default function AppHeader({ user, pageTitle = "Dashboard" }) {
 
       {/* Right actions */}
       <div className="header-actions">
+        {/* Theme switch */}
+        <button className="header-icon-btn" title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`} onClick={toggleTheme}>
+          <i className={`pi ${theme === "dark" ? "pi-sun" : "pi-moon"}`} />
+        </button>
+
         {/* Notifications bell */}
         <button className="header-icon-btn" title="Notifications">
           <i className="pi pi-bell" />
@@ -63,12 +82,12 @@ export default function AppHeader({ user, pageTitle = "Dashboard" }) {
             background: "var(--card-bg)",
             border: "1px solid var(--card-border)",
             borderRadius: "12px",
-            boxShadow: "0 16px 40px rgba(0,0,0,0.4)",
+            boxShadow: "0 16px 40px var(--elevation-shadow)",
             minWidth: "200px",
             overflow: "hidden",
           }}
         >
-          <div style={{ padding: "0.75rem 1rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ padding: "0.75rem 1rem", borderBottom: "1px solid var(--card-border)" }}>
             <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)" }}>
               {user?.firstName} {user?.lastName}
             </div>
@@ -92,7 +111,7 @@ export default function AppHeader({ user, pageTitle = "Dashboard" }) {
                 color: "var(--text-secondary)",
                 transition: "background 0.15s",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-soft)")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
               <i className={`pi ${m.icon}`} style={{ fontSize: "0.85rem" }} />
@@ -100,7 +119,7 @@ export default function AppHeader({ user, pageTitle = "Dashboard" }) {
             </div>
           ))}
 
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", margin: "0.25rem 0" }} />
+          <div style={{ borderTop: "1px solid var(--card-border)", margin: "0.25rem 0" }} />
 
           <div
             onClick={handleLogout}

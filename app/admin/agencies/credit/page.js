@@ -1,6 +1,7 @@
 // app/admin/agencies/credit/page.js — Admin: Agency Credit Limits
 import { getSession } from "@/lib/auth.js";
 import prisma from "@/lib/prisma.js";
+import { isDatabaseReachable, withPrismaFallback } from "@/lib/prismaResilience.js";
 
 export const metadata = { title: "Credit Limits · Admin · JP Tourism" };
 
@@ -22,17 +23,37 @@ export default async function AdminCreditLimitsPage() {
   const session = await getSession();
   if (!session) return null;
 
-  const [agencies, totals] = await Promise.all([
-    prisma.agency.findMany({
-      orderBy: [{ isActive: "desc" }, { creditLimit: "desc" }],
-      take: 200,
-      include: { _count: { select: { bookings: true } } },
-    }),
-    prisma.agency.aggregate({
-      _sum: { creditLimit: true, walletBalance: true },
-      _avg: { creditLimit: true, marginPercent: true },
-    }),
-  ]);
+  const fallback = {
+    agencies: [],
+    totals: {
+      _sum: { creditLimit: 0, walletBalance: 0 },
+      _avg: { creditLimit: 0, marginPercent: 0 },
+    },
+  };
+
+  const reachable = await isDatabaseReachable(prisma, "admin-agencies-credit-page");
+
+  const { agencies, totals } = !reachable
+    ? fallback
+    : await withPrismaFallback(
+        async () => {
+          const [agencies, totals] = await Promise.all([
+            prisma.agency.findMany({
+              orderBy: [{ isActive: "desc" }, { creditLimit: "desc" }],
+              take: 200,
+              include: { _count: { select: { bookings: true } } },
+            }),
+            prisma.agency.aggregate({
+              _sum: { creditLimit: true, walletBalance: true },
+              _avg: { creditLimit: true, marginPercent: true },
+            }),
+          ]);
+
+          return { agencies, totals };
+        },
+        fallback,
+        "admin-agencies-credit-page"
+      );
 
   const totalCredit = totals._sum.creditLimit ?? 0;
   const totalWallet = totals._sum.walletBalance ?? 0;
@@ -73,7 +94,7 @@ export default async function AdminCreditLimitsPage() {
       <div style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: "14px", overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead style={{ background: "#1a1f2e" }}>
+            <thead style={{ background: "var(--table-header-bg)" }}>
               <tr>
                 <TH>Agency</TH>
                 <TH>Active</TH>

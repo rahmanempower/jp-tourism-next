@@ -1,6 +1,7 @@
 // app/agency/dashboard/page.js — Agency Dashboard
 import { getSession } from "@/lib/auth.js";
 import prisma from "@/lib/prisma.js";
+import { isDatabaseReachable, withPrismaFallback } from "@/lib/prismaResilience.js";
 
 export const metadata = { title: "Dashboard · Agency · JP Tourism" };
 
@@ -8,26 +9,44 @@ async function getAgencyKpis(agencyId) {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const [
-    totalBookings,
-    bookingsMtd,
-    activeBookings,
-    totalCustomers,
-    openEnquiries,
-    agency,
-  ] = await Promise.all([
-    prisma.booking.count({ where: { agencyId } }),
-    prisma.booking.count({ where: { agencyId, createdAt: { gte: startOfMonth } } }),
-    prisma.booking.count({ where: { agencyId, status: { in: ["CONFIRMED", "PROCESSING"] } } }),
-    prisma.customer.count({ where: { agencyId } }),
-    prisma.enquiry.count({ where: { agencyId, status: { in: ["OPEN", "DRAFT_CREATED", "QUOTED"] } } }),
-    prisma.agency.findUnique({
-      where: { id: agencyId },
-      select: { businessName: true, walletBalance: true, creditLimit: true },
-    }),
-  ]);
+  const fallback = {
+    totalBookings: 0,
+    bookingsMtd: 0,
+    activeBookings: 0,
+    totalCustomers: 0,
+    openEnquiries: 0,
+    agency: null,
+  };
 
-  return { totalBookings, bookingsMtd, activeBookings, totalCustomers, openEnquiries, agency };
+  const reachable = await isDatabaseReachable(prisma, "agency-dashboard");
+  if (!reachable) return fallback;
+
+  return withPrismaFallback(
+    async () => {
+      const [
+        totalBookings,
+        bookingsMtd,
+        activeBookings,
+        totalCustomers,
+        openEnquiries,
+        agency,
+      ] = await Promise.all([
+        prisma.booking.count({ where: { agencyId } }),
+        prisma.booking.count({ where: { agencyId, createdAt: { gte: startOfMonth } } }),
+        prisma.booking.count({ where: { agencyId, status: { in: ["CONFIRMED", "PROCESSING"] } } }),
+        prisma.customer.count({ where: { agencyId } }),
+        prisma.enquiry.count({ where: { agencyId, status: { in: ["OPEN", "DRAFT_CREATED", "QUOTED"] } } }),
+        prisma.agency.findUnique({
+          where: { id: agencyId },
+          select: { businessName: true, walletBalance: true, creditLimit: true },
+        }),
+      ]);
+
+      return { totalBookings, bookingsMtd, activeBookings, totalCustomers, openEnquiries, agency };
+    },
+    fallback,
+    "agency-dashboard"
+  );
 }
 
 export default async function AgencyDashboardPage() {

@@ -1,10 +1,25 @@
 // app/vendor/dashboard/page.js — Vendor Dashboard
 import { getSession } from "@/lib/auth.js";
 import prisma from "@/lib/prisma.js";
+import { isDatabaseReachable, withPrismaFallback } from "@/lib/prismaResilience.js";
 
 export const metadata = { title: "Dashboard · Vendor · JP Tourism" };
 
 async function getVendorKpis(vendorId) {
+  const fallback = {
+    totalListings: 0,
+    approvedListings: 0,
+    pendingListings: 0,
+    totalOrders: 0,
+    activeOrders: 0,
+    ordersMtd: 0,
+    vendor: null,
+  };
+
+  const reachable = await isDatabaseReachable(prisma, "vendor-dashboard");
+  if (!reachable) return fallback;
+
+  return withPrismaFallback(async () => {
   const [
     totalListings,
     approvedListings,
@@ -31,6 +46,7 @@ async function getVendorKpis(vendorId) {
   });
 
   return { totalListings, approvedListings, pendingListings, totalOrders, activeOrders, ordersMtd, vendor };
+  }, fallback, "vendor-dashboard");
 }
 
 export default async function VendorDashboardPage() {

@@ -91,7 +91,7 @@ export default async function UsersPage() {
       <div style={{ background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: "14px", overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
           <thead>
-            <tr style={{ background: "#1a1f2e" }}>
+            <tr style={{ background: "var(--table-header-bg)" }}>
               {["Name", "Email", "Role", "Entity", "Active", "Last Login", "Created"].map((h) => (
                 <th
                   key={h}
