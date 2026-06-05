@@ -174,28 +174,28 @@ enum PaymentStatus {
 // Central authentication & identity — shared across all roles.
 // ─────────────────────────────────────────────
 model User {
-  id              String    @id @default(auto()) @map("_id") @db.ObjectId
-  email           String    @unique
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  email           String   @unique
   passwordHash    String
   role            UserRole
   firstName       String
   lastName        String
   phone           String?
-  isActive        Boolean   @default(true)
-  isEmailVerified Boolean   @default(false)
+  isActive        Boolean  @default(true)
+  isEmailVerified Boolean  @default(false)
 
   /// FK → Vendor (if role = VENDOR)
-  vendorId        String?   @db.ObjectId
+  vendorId String? @db.ObjectId
   /// FK → Agency (if role = AGENCY_*)
-  agencyId        String?   @db.ObjectId
+  agencyId String? @db.ObjectId
 
-  lastLoginAt     DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   // Relations
-  vendor          Vendor?   @relation(fields: [vendorId], references: [id])
-  agency          Agency?   @relation(fields: [agencyId], references: [id])
+  vendor Vendor? @relation(fields: [vendorId], references: [id])
+  agency Agency? @relation(fields: [agencyId], references: [id])
 
   // Back-relations
   approvedListings  ServiceListing[] @relation("ListingApprovedBy")
@@ -232,10 +232,11 @@ model Vendor {
   updatedAt      DateTime         @updatedAt
 
   // Back-relations
-  users          User[]
-  listings       ServiceListing[]
-  bookings       Booking[]
-  escrows        EscrowLedger[]
+  users     User[]
+  listings  ServiceListing[]
+  bookings  Booking[]
+  escrows   EscrowLedger[]
+  documents Document[]
 
   @@map("vendors")
 }
@@ -244,29 +245,29 @@ model Vendor {
 // 3.3 Agency Model
 // ─────────────────────────────────────────────
 model Agency {
-  id             String    @id @default(auto()) @map("_id") @db.ObjectId
-  businessName   String
-  slug           String    @unique
-  licenseNumber  String?   @unique
-  contactEmail   String
-  contactPhone   String
-  walletBalance  Float     @default(0)
-  creditLimit    Float     @default(0)
-  marginPercent  Float     @default(2)
-  isActive       Boolean   @default(true)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  businessName  String
+  slug          String   @unique
+  licenseNumber String?  @unique
+  contactEmail  String
+  contactPhone  String
+  walletBalance Float    @default(0)
+  creditLimit   Float    @default(0)
+  marginPercent Float    @default(2)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Back-relations
-  users          User[]
-  enquiries      Enquiry[]
-  draftPackages  DraftPackage[]
-  bookings       Booking[]
-  customers      Customer[]
-  transactions   WalletTransaction[]
-  escrows        EscrowLedger[]
-  documents      Document[]
-  invoices       Invoice[]
+  users         User[]
+  enquiries     Enquiry[]
+  draftPackages DraftPackage[]
+  bookings      Booking[]
+  customers     Customer[]
+  transactions  WalletTransaction[]
+  escrows       EscrowLedger[]
+  documents     Document[]
+  invoices      Invoice[]
 
   @@map("agencies")
 }
@@ -275,37 +276,37 @@ model Agency {
 // 3.4 ServiceListing Model
 // ─────────────────────────────────────────────
 model ServiceListing {
-  id                  String         @id @default(auto()) @map("_id") @db.ObjectId
-  vendorId            String         @db.ObjectId
-  category            VendorCategory
-  title               String
-  description         String?
+  id                 String         @id @default(auto()) @map("_id") @db.ObjectId
+  vendorId           String         @db.ObjectId
+  category           VendorCategory
+  title              String
+  description        String?
   /// ISO-3166-1 alpha-2
-  destinationCountry  String
-  inclusions          String[]
+  destinationCountry String
+  inclusions         String[]
   /// [{name, mandatory, description}]
-  requiredDocuments   Json[]
-  basePrice           Float
-  refundablePercent   Float     
+  requiredDocuments  Json[]
+  basePrice          Float
+  refundablePercent  Float
 
   /// ISO 4217
-  currency            String         @default("USD")
-  slaDays             Int
-  status              ListingStatus  @default(DRAFT)
-  approvedBy          String?        @db.ObjectId
-  approvedAt          DateTime?
-  inventoryCount      Int?
-  tags                String[]
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  currency       String        @default("USD")
+  slaDays        Int
+  status         ListingStatus @default(DRAFT)
+  approvedBy     String?       @db.ObjectId
+  approvedAt     DateTime?
+  inventoryCount Int?
+  tags           String[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   // Relations
-  vendor              Vendor         @relation(fields: [vendorId], references: [id])
-  approver            User?          @relation("ListingApprovedBy", fields: [approvedBy], references: [id])
+  vendor   Vendor @relation(fields: [vendorId], references: [id])
+  approver User?  @relation("ListingApprovedBy", fields: [approvedBy], references: [id])
 
   // Back-relations
-  bookings            Booking[]
-  packageItems        PackageItems[]
+  bookings     Booking[]
+  packageItems PackageItems[]
 
   @@map("service_listings")
 }
@@ -314,20 +315,20 @@ model ServiceListing {
 // 3.5 Enquiry Model
 // ─────────────────────────────────────────────
 model Enquiry {
-  id          String        @id @default(auto()) @map("_id") @db.ObjectId
-  agencyId    String        @db.ObjectId
-  customerId  String?       @db.ObjectId
-  title       String
-  status      EnquiryStatus @default(OPEN)
-  notes       String?
+  id         String        @id @default(auto()) @map("_id") @db.ObjectId
+  agencyId   String        @db.ObjectId
+  customerId String?       @db.ObjectId
+  title      String
+  status     EnquiryStatus @default(OPEN)
+  notes      String?
   /// FK → User (staff who created)
-  createdBy   String        @db.ObjectId
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdBy  String        @db.ObjectId
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
   // Relations
-  agency        Agency         @relation(fields: [agencyId], references: [id])
-  customer      Customer?      @relation(fields: [customerId], references: [id])
+  agency   Agency    @relation(fields: [agencyId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
 
   // Back-relations
   draftPackages DraftPackage[]
@@ -339,46 +340,46 @@ model Enquiry {
 // 3.6 DraftPackage Model
 // ─────────────────────────────────────────────
 model DraftPackage {
-  id               String             @id @default(auto()) @map("_id") @db.ObjectId
-  enquiryId        String             @db.ObjectId
-  agencyId         String             @db.ObjectId
-  version          Int                @default(1)
-  title            String
-  subtotal         Float
-  marginTotal      Float
-  grandTotal       Float
-  quotationPdfKey  String?
-  whatsappSent     Boolean            @default(false)
-  expiresAt        DateTime?
-  status           DraftPackageStatus @default(DRAFT)
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  id              String             @id @default(auto()) @map("_id") @db.ObjectId
+  enquiryId       String             @db.ObjectId
+  agencyId        String             @db.ObjectId
+  version         Int                @default(1)
+  title           String
+  subtotal        Float
+  marginTotal     Float
+  grandTotal      Float
+  quotationPdfKey String?
+  whatsappSent    Boolean            @default(false)
+  expiresAt       DateTime?
+  status          DraftPackageStatus @default(DRAFT)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 
   // Relations
-  enquiry          Enquiry            @relation(fields: [enquiryId], references: [id])
-  agency           Agency             @relation(fields: [agencyId], references: [id])
+  enquiry Enquiry @relation(fields: [enquiryId], references: [id])
+  agency  Agency  @relation(fields: [agencyId], references: [id])
 
   // Back-relations
-  bookings         Booking[]
-  items            PackageItems[]
+  bookings Booking[]
+  items    PackageItems[]
 
   @@map("draft_packages")
 }
 
 model PackageItems {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
-  draftPackageId String @db.ObjectId
-  listingId String @db.ObjectId
-  qty Int
-  vendorPrice Float
-  agencyMargin Float //calculated value from agency margin percent
-  totalPrice Float
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  draftPackageId String   @db.ObjectId
+  listingId      String   @db.ObjectId
+  qty            Int
+  vendorPrice    Float
+  agencyMargin   Float //calculated value from agency margin percent
+  totalPrice     Float
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   // Relations
-  draftPackage DraftPackage @relation(fields: [draftPackageId], references: [id])
-  listing ServiceListing @relation(fields: [listingId], references: [id])
+  draftPackage DraftPackage   @relation(fields: [draftPackageId], references: [id])
+  listing      ServiceListing @relation(fields: [listingId], references: [id])
 
   @@map("package_items")
 }
@@ -408,16 +409,16 @@ model Booking {
   updatedAt          DateTime             @updatedAt
 
   // Relations
-  agency             Agency               @relation(fields: [agencyId], references: [id])
-  customer           Customer             @relation(fields: [customerId], references: [id])
-  draftPackage       DraftPackage?        @relation(fields: [draftPackageId], references: [id])
-  listing            ServiceListing       @relation(fields: [listingId], references: [id])
-  vendor             Vendor               @relation(fields: [vendorId], references: [id])
+  agency       Agency         @relation(fields: [agencyId], references: [id])
+  customer     Customer       @relation(fields: [customerId], references: [id])
+  draftPackage DraftPackage?  @relation(fields: [draftPackageId], references: [id])
+  listing      ServiceListing @relation(fields: [listingId], references: [id])
+  vendor       Vendor         @relation(fields: [vendorId], references: [id])
 
   // Back-relations
-  escrow             EscrowLedger?
-  documents          Document[]
-  invoices           Invoice[]
+  escrow    EscrowLedger?
+  documents Document[]
+  invoices  Invoice[]
 
   @@map("bookings")
 }
@@ -426,31 +427,31 @@ model Booking {
 // 3.8 Customer Model (CRM)
 // ─────────────────────────────────────────────
 model Customer {
-  id               String                @id @default(auto()) @map("_id") @db.ObjectId
+  id             String                @id @default(auto()) @map("_id") @db.ObjectId
   /// Tenant isolation — all queries must filter by agencyId
-  agencyId         String                @db.ObjectId
-  firstName        String
-  lastName         String
-  email            String?
-  phone            String
+  agencyId       String                @db.ObjectId
+  firstName      String
+  lastName       String
+  email          String?
+  phone          String
   /// ISO-3166-1 alpha-2
-  nationality      String?
+  nationality    String?
   /// AES-encrypted at rest
-  passportNumber   String?
-  passportExpiry   DateTime?
-  dateOfBirth      DateTime?
-  tags             String[]
-  pipelineStage    CustomerPipelineStage @default(LEAD)
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
+  passportNumber String?
+  passportExpiry DateTime?
+  dateOfBirth    DateTime?
+  tags           String[]
+  pipelineStage  CustomerPipelineStage @default(LEAD)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
 
   // Relations
-  agency           Agency                @relation(fields: [agencyId], references: [id])
+  agency Agency @relation(fields: [agencyId], references: [id])
 
   // Back-relations
-  enquiries        Enquiry[]
-  bookings         Booking[]
-  documents        Document[]
+  enquiries Enquiry[]
+  bookings  Booking[]
+  documents Document[]
 
   @@map("customers")
 }
@@ -474,7 +475,7 @@ model WalletTransaction {
   createdAt     DateTime              @default(now())
 
   // Relations
-  agency        Agency                @relation(fields: [agencyId], references: [id])
+  agency Agency @relation(fields: [agencyId], references: [id])
 
   @@map("wallet_transactions")
 }
@@ -484,22 +485,22 @@ model WalletTransaction {
 // One record per booking — released by Admin on completion.
 // ─────────────────────────────────────────────
 model EscrowLedger {
-  id          String       @id @default(auto()) @map("_id") @db.ObjectId
-  bookingId   String       @unique @db.ObjectId
-  agencyId    String       @db.ObjectId
-  vendorId    String       @db.ObjectId
-  amount      Float
-  commission  Float
-  status      EscrowStatus @default(HELD)
-  heldAt      DateTime
-  releasedAt  DateTime?
-  releasedBy  String?      @db.ObjectId
+  id         String       @id @default(auto()) @map("_id") @db.ObjectId
+  bookingId  String       @unique @db.ObjectId
+  agencyId   String       @db.ObjectId
+  vendorId   String       @db.ObjectId
+  amount     Float
+  commission Float
+  status     EscrowStatus @default(HELD)
+  heldAt     DateTime
+  releasedAt DateTime?
+  releasedBy String?      @db.ObjectId
 
   // Relations
-  booking     Booking      @relation(fields: [bookingId], references: [id])
-  agency      Agency       @relation(fields: [agencyId], references: [id])
-  vendor      Vendor       @relation(fields: [vendorId], references: [id])
-  releaser    User?        @relation("EscrowReleasedBy", fields: [releasedBy], references: [id])
+  booking  Booking @relation(fields: [bookingId], references: [id])
+  agency   Agency  @relation(fields: [agencyId], references: [id])
+  vendor   Vendor  @relation(fields: [vendorId], references: [id])
+  releaser User?   @relation("EscrowReleasedBy", fields: [releasedBy], references: [id])
 
   @@map("escrow_ledger")
 }
@@ -513,6 +514,7 @@ model Document {
   bookingId     String               @db.ObjectId
   customerId    String               @db.ObjectId
   agencyId      String               @db.ObjectId
+  vendorId      String               @db.ObjectId
   /// PASSPORT | VISA | NID | PHOTO | OTHER
   type          String
   name          String
@@ -527,10 +529,11 @@ model Document {
   updatedAt     DateTime             @updatedAt
 
   // Relations
-  booking       Booking              @relation(fields: [bookingId], references: [id])
-  customer      Customer             @relation(fields: [customerId], references: [id])
-  agency        Agency               @relation(fields: [agencyId], references: [id])
-  reviewer      User?                @relation("DocumentReviewedBy", fields: [reviewedBy], references: [id])
+  booking  Booking  @relation(fields: [bookingId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+  agency   Agency   @relation(fields: [agencyId], references: [id])
+  vendor   Vendor   @relation(fields: [vendorId], references: [id])
+  reviewer User?    @relation("DocumentReviewedBy", fields: [reviewedBy], references: [id])
 
   @@map("documents")
 }
@@ -559,11 +562,11 @@ model Invoice {
   createdAt     DateTime      @default(now())
 
   // Relations
-  agency        Agency        @relation(fields: [agencyId], references: [id])
-  booking       Booking?      @relation(fields: [bookingId], references: [id])
+  agency  Agency   @relation(fields: [agencyId], references: [id])
+  booking Booking? @relation(fields: [bookingId], references: [id])
 
   // Back-relations
-  payments      Payment[]
+  payments Payment[]
 
   @@map("invoices")
 }
@@ -572,22 +575,21 @@ model Invoice {
 // 3.13 Payment Model
 // ─────────────────────────────────────────────
 model Payment {
-  id String  @id @default(auto()) @map("_id") @db.ObjectId
-  invoiceId String @db.ObjectId
-  agencyId String @db.ObjectId
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  invoiceId     String        @db.ObjectId
+  agencyId      String        @db.ObjectId
   paymentMethod PaymentMethod
-  transactionId String @unique
-  amount Float
-  status PaymentStatus
-  paidAt DateTime
-  createdAt DateTime @default(now())
+  transactionId String        @unique
+  amount        Float
+  status        PaymentStatus
+  paidAt        DateTime
+  createdAt     DateTime      @default(now())
 
   // Relations
   invoice Invoice @relation(fields: [invoiceId], references: [id])
-  
+
   @@map("payments")
 }
-
 
 // ─────────────────────────────────────────────
 // 3.14 Notification Model
@@ -606,7 +608,7 @@ model Notification {
   createdAt      DateTime                   @default(now())
 
   // Relations
-  user           User                       @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@map("notifications")
 }
@@ -644,7 +646,7 @@ model AuditLog {
   createdAt  DateTime @default(now())
 
   // Relations
-  user       User     @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@map("audit_logs")
 }

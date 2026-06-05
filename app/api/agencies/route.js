@@ -6,6 +6,16 @@ import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma.js";
 import { requireAuth, ok, fail } from "@/lib/apiAuth.js";
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function isValidEmail(value) {
+    return EMAIL_RE.test(String(value).trim());
+}
+
+function isFiniteNumber(value) {
+    return Number.isFinite(value) && !Number.isNaN(value);
+}
+
 export async function GET(request) {
     const { error } = await requireAuth(request, ["SUPER_ADMIN", "ADMIN"]);
     if (error) return error;
@@ -66,32 +76,56 @@ export async function POST(request) {
             owner, // optional: { email, password, firstName, lastName, phone? }
         } = body;
 
-        if (!businessName || !contactEmail || !contactPhone) {
-            return fail("businessName, contactEmail, and contactPhone are required.");
+        const trimmedBusinessName = typeof businessName === "string" ? businessName.trim() : "";
+        const trimmedContactEmail = typeof contactEmail === "string" ? contactEmail.trim() : "";
+        const trimmedContactPhone = typeof contactPhone === "string" ? contactPhone.trim() : "";
+        const trimmedLicenseNumber = typeof licenseNumber === "string" ? licenseNumber.trim() : "";
+        const normalizedCreditLimit = Number(creditLimit);
+        const normalizedMarginPercent = Number(marginPercent);
+
+        if (!trimmedBusinessName || !trimmedContactEmail || !trimmedContactPhone || !trimmedLicenseNumber) {
+            return fail("businessName, contactEmail, contactPhone, and licenseNumber are required.");
+        }
+
+        if (!isValidEmail(trimmedContactEmail)) {
+            return fail("contactEmail is invalid.");
+        }
+
+        if (!isFiniteNumber(normalizedCreditLimit) || normalizedCreditLimit < 0) {
+            return fail("creditLimit must be a valid non-negative number.");
+        }
+
+        if (!isFiniteNumber(normalizedMarginPercent) || normalizedMarginPercent < 0 || normalizedMarginPercent > 100) {
+            return fail("marginPercent must be between 0 and 100.");
         }
 
         if (owner) {
-            const { email, password, firstName, lastName } = owner;
-            if (!email || !password || !firstName || !lastName) {
+            const ownerEmail = typeof owner.email === "string" ? owner.email.trim() : "";
+            const ownerPassword = typeof owner.password === "string" ? owner.password : "";
+            const ownerFirstName = typeof owner.firstName === "string" ? owner.firstName.trim() : "";
+            const ownerLastName = typeof owner.lastName === "string" ? owner.lastName.trim() : "";
+
+            if (!ownerEmail || !ownerPassword || !ownerFirstName || !ownerLastName) {
                 return fail("owner.email, owner.password, owner.firstName, and owner.lastName are required when creating an owner user.");
             }
-            if (password.length < 8) {
+            if (!isValidEmail(ownerEmail)) {
+                return fail("owner.email is invalid.");
+            }
+            if (ownerPassword.length < 8) {
                 return fail("Password must be at least 8 characters.");
             }
-            const existingUser = await prisma.user.findUnique({ where: { email } });
+            const existingUser = await prisma.user.findUnique({ where: { email: ownerEmail } });
             if (existingUser) {
                 return fail("A user with that email already exists.", 409);
             }
         }
 
-        if (licenseNumber) {
-            const existingLicense = await prisma.agency.findUnique({ where: { licenseNumber } });
-            if (existingLicense) {
-                return fail("An agency with that license number already exists.", 409);
-            }
+        const existingLicense = await prisma.agency.findUnique({ where: { licenseNumber: trimmedLicenseNumber } });
+        if (existingLicense) {
+            return fail("An agency with that license number already exists.", 409);
         }
 
-        const baseSlug = businessName
+        const baseSlug = trimmedBusinessName
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, "-")
             .replace(/(^-|-$)/g, "");
@@ -100,28 +134,33 @@ export async function POST(request) {
 
         const agency = await prisma.agency.create({
             data: {
-                businessName,
+                businessName: trimmedBusinessName,
                 slug,
-                licenseNumber: licenseNumber ?? null,
-                contactEmail,
-                contactPhone,
-                creditLimit: typeof creditLimit === "number" ? creditLimit : 0,
-                marginPercent: typeof marginPercent === "number" ? marginPercent : 2,
+                licenseNumber: trimmedLicenseNumber,
+                contactEmail: trimmedContactEmail,
+                contactPhone: trimmedContactPhone,
+                creditLimit: normalizedCreditLimit,
+                marginPercent: normalizedMarginPercent,
                 isActive: typeof isActive === "boolean" ? isActive : true,
             },
         });
 
         let user = null;
         if (owner) {
-            const passwordHash = await bcrypt.hash(owner.password, 12);
+            const ownerEmail = typeof owner.email === "string" ? owner.email.trim() : "";
+            const ownerPassword = typeof owner.password === "string" ? owner.password : "";
+            const ownerFirstName = typeof owner.firstName === "string" ? owner.firstName.trim() : "";
+            const ownerLastName = typeof owner.lastName === "string" ? owner.lastName.trim() : "";
+            const ownerPhone = typeof owner.phone === "string" ? owner.phone.trim() : "";
+            const passwordHash = await bcrypt.hash(ownerPassword, 12);
             user = await prisma.user.create({
                 data: {
-                    email: owner.email,
+                    email: ownerEmail,
                     passwordHash,
                     role: "AGENCY_OWNER",
-                    firstName: owner.firstName,
-                    lastName: owner.lastName,
-                    phone: owner.phone ?? null,
+                    firstName: ownerFirstName,
+                    lastName: ownerLastName,
+                    phone: ownerPhone || null,
                     isActive: true,
                     isEmailVerified: false,
                     agencyId: agency.id,

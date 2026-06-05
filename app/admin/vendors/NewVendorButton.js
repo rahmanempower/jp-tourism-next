@@ -108,6 +108,10 @@ export default function NewVendorButton() {
 
     const fieldStyle = { display: "flex", flexDirection: "column", gap: "0.35rem" };
     const labelStyle = { fontSize: "0.78rem", color: "var(--text-muted)", fontWeight: 500 };
+    const dropDownStyle = {
+        width: "100%", background: "var(--input-bg)", border: "1px solid var(--input-border)", borderRadius: 4, padding: "0.5rem",
+        "--placeholder-color": "var(--text-muted)"
+    };
 
     return (
         <>
@@ -115,16 +119,20 @@ export default function NewVendorButton() {
             <Button
                 label="New Vendor"
                 icon="pi pi-plus"
+
                 onClick={() => setOpen(true)}
-                style={{ background: "#6366f1", border: "none", borderRadius: 8 }}
+                style={{
+                    background: "#6366f1", border: "none", borderRadius: 8, padding: "0.62rem 0.95rem", color: "#ffffff"
+                }}
             />
 
             <Dialog
-                header="Create Vendor"
+                header={<div style={{ padding: "0.5rem 1rem" }}>Create Vendor</div>}
                 visible={open}
                 onHide={close}
                 style={{ width: "min(640px, 95vw)" }}
                 modal
+                contentStyle={{ overflowX: "hidden", padding: "1rem 1.1rem 1.2rem" }}
                 dismissableMask={!submitting}
                 closable={!submitting}
             >
@@ -149,6 +157,13 @@ export default function NewVendorButton() {
                             onChange={(e) => setForm((f) => ({ ...f, category: e.value }))}
                             placeholder="Select categories"
                             display="chip"
+                            itemTemplate={(option) => (
+                                <div style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "0.25rem" }}>
+                                    <div style={{ width: 10, height: 10, borderRadius: "50%" }} />
+                                    <span>{option.label}</span>
+                                </div>
+                            )}
+                            style={dropDownStyle}
                         />
                     </div>
                 </div>
